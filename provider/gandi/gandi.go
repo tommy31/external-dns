@@ -49,10 +49,25 @@ type GandiProvider struct {
 	LiveDNSClient LiveDNSClientAdapter
 	DomainClient  DomainClientAdapter
 	domainFilter  endpoint.DomainFilter
+	PreferALIAS   bool
 	DryRun        bool
+	TXTPrefix     string
+	TXTSuffix     string
 }
 
-func NewGandiProvider(ctx context.Context, domainFilter endpoint.DomainFilter, dryRun bool) (*GandiProvider, error) {
+// inferZone determines if the provider specific alias should be set
+func inferZone(RrsetName string, TXTPrefix string, TXTSuffix string, replaceType bool) string {
+	cleanRrsetName := strings.Replace(RrsetName, TXTPrefix, "", 1)
+	cleanRrsetName = strings.Replace(cleanRrsetName, TXTSuffix, "", 1)
+
+	if replaceType {
+		cleanRrsetName = strings.Replace(cleanRrsetName, "cname-", "", 1)
+	}
+
+	return cleanRrsetName
+}
+
+func NewGandiProvider(ctx context.Context, domainFilter endpoint.DomainFilter, dryRun bool, TXTPrefix string, TXTSuffix string) (*GandiProvider, error) {
 	key, ok := os.LookupEnv("GANDI_KEY")
 	if !ok {
 		return nil, errors.New("no environment variable GANDI_KEY provided")
@@ -75,6 +90,8 @@ func NewGandiProvider(ctx context.Context, domainFilter endpoint.DomainFilter, d
 		DomainClient:  NewDomainClient(domainClient),
 		domainFilter:  domainFilter,
 		DryRun:        dryRun,
+		TXTPrefix:     TXTPrefix,
+		TXTSuffix:     TXTSuffix,
 	}
 	return gandiProvider, nil
 }
@@ -258,7 +275,7 @@ func (p *GandiProvider) groupAndFilterByZone(zones []string, changes []*GandiCha
 	}
 
 	for _, c := range changes {
-		zoneID, zoneName := zoneNameID.FindZone(c.Record.RrsetName)
+		zoneID, zoneName := zoneNameID.FindZone(inferZone(c.Record.RrsetName, p.TXTPrefix, p.TXTSuffix, true))
 		if zoneName == "" {
 			log.Debugf("Skipping record %s because no hosted domain matching record DNS Name was detected", c.Record.RrsetName)
 			continue

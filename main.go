@@ -335,7 +335,7 @@ func main() {
 	case "godaddy":
 		p, err = godaddy.NewGoDaddyProvider(ctx, domainFilter, cfg.GoDaddyTTL, cfg.GoDaddyAPIKey, cfg.GoDaddySecretKey, cfg.GoDaddyOTE, cfg.DryRun)
 	case "gandi":
-		p, err = gandi.NewGandiProvider(ctx, domainFilter, cfg.DryRun)
+		p, err = gandi.NewGandiProvider(ctx, domainFilter, cfg.DryRun, cfg.TXTPrefix, cfg.TXTSuffix)
 	case "pihole":
 		p, err = pihole.NewPiholeProvider(
 			pihole.PiholeConfig{
